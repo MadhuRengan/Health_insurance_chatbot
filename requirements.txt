@@ -1,0 +1,14 @@
+# Web interface
+streamlit==1.62.0
+ 
+# LangChain components imported by app.py
+langchain-community==0.4.2
+langchain-classic==1.0.8
+langchain-google-genai==4.3.7
+ 
+# Local embeddings and FAISS vector search
+sentence-transformers==6.0.0
+faiss-cpu==1.15.0
+ 
+# Loads local variables from .env during development
+python-dotenv==1.2.3
