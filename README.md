@@ -1,128 +1,86 @@
-# Health Insurance Chatbot
-
-A conversational AI chatbot designed to help users understand and navigate health insurance options, coverage details, and claims processes.
-
-## Overview
-
-This project implements an intelligent chatbot using Jupyter Notebooks that leverages natural language processing and machine learning to provide users with accurate, personalized health insurance guidance. The chatbot can answer common questions about insurance policies, coverage benefits, premium calculations, and claims procedures.
-
+# Health Insurance RAG Chatbot
+A retrieval-augmented generation (RAG) chatbot that answers health-insurance questions about coverage, exclusions, claims, premiums, and optional riders. The project is implemented in a Google Colab/Jupyter notebook and includes a Streamlit chat interface.
+## How it works
+1. Health-insurance knowledge-base entries are converted to text.
+2. `all-MiniLM-L6-v2` creates an embedding for each text chunk.
+3. FAISS stores the embeddings and retrieves entries related to the user's question.
+4. LangChain passes the retrieved context and the question to Google Gemini.
+5. A Streamlit interface displays the generated answer.
+The chatbot prompt instructs the model to answer only from the supplied knowledge base and to avoid inventing policy details.
 ## Features
-
-- **Conversational Interface**: Natural language understanding and generation for user-friendly interactions
-- **Insurance Knowledge Base**: Comprehensive information about insurance policies, coverage types, and terms
-- **Claim Assistance**: Guidance on claim filing and processing procedures
-- **Policy Comparison**: Help users compare different insurance plans based on their needs
-- **Premium Estimation**: Calculate approximate premiums based on user inputs
-- **Interactive Q&A**: Answer frequently asked questions about health insurance
-
-## Project Structure
-
-```
+- Answers questions about hospitalization coverage and policy exclusions
+- Explains cashless and reimbursement claim procedures
+- Provides information about premiums, renewal, portability, and no-claim bonuses
+- Covers optional benefits such as maternity and critical-illness riders
+- Uses semantic search through Hugging Face embeddings and FAISS
+- Includes a simple Streamlit web interface
+- Provides a fallback response when the knowledge base does not contain an answer
+## Technology stack
+- Python
+- Google Colab / Jupyter Notebook
+- Google Gemini through `langchain-google-genai`
+- LangChain
+- Hugging Face `all-MiniLM-L6-v2` embeddings
+- FAISS
+- Streamlit
+- ngrok or LocalTunnel for exposing the Colab app
+## Repository structure
+```text
 Health_insurance_chatbot/
-├── README.md
-└── [Jupyter Notebook files]
-    └── Contains implementation, data processing, and model training
+├── Insurance_chatbot.ipynb  # RAG pipeline, sample query, and Streamlit app
+└── README.md                 # Project documentation
 ```
-
+> The notebook initially loads `/content/knowledge_base (1).json`, but that file is not currently included in the repository. A later notebook cell contains an embedded sample knowledge base for the generated Streamlit app.
 ## Prerequisites
-
-- Python 3.7 or higher
-- Jupyter Notebook
-- Required Python libraries:
-  - `pandas` - Data manipulation and analysis
-  - `numpy` - Numerical computations
-  - `scikit-learn` - Machine learning algorithms
-  - `nltk` - Natural language processing
-  - `spacy` - Advanced NLP tasks
-  - `tensorflow` or `pytorch` - Deep learning (if used)
-
-## Installation
-
+- A Google account with access to Google Colab, or Python 3.10+ with Jupyter installed
+- A Google Gemini API key
+- Internet access on the first run to download the embedding model
+- An ngrok account only if you choose the ngrok option
+## Run in Google Colab
+1. Open `Insurance_chatbot.ipynb` in Google Colab.
+2. Add your Gemini API key to **Colab secrets** using the name `api`.
+3. If you want to run the first RAG workflow, upload the missing knowledge-base file as:
+   ```text
+   /content/knowledge_base (1).json
+   ```
+4. Run the notebook cells in order.
+5. To launch the Streamlit interface, run the cell that creates `app.py`, followed by either the ngrok or LocalTunnel launch cell.
+The notebook includes this secure pattern for loading the Gemini key:
+```python
+from google.colab import userdata
+GOOGLE_API_KEY = userdata.get("api")
+```
+## Run locally
+The repository currently stores the application inside the notebook rather than as a standalone `app.py`. To run it locally:
 1. Clone the repository:
    ```bash
    git clone https://github.com/MadhuRengan/Health_insurance_chatbot.git
    cd Health_insurance_chatbot
    ```
-
-2. Install dependencies:
+2. Create and activate a virtual environment:
    ```bash
-   pip install -r requirements.txt
+   python -m venv .venv
    ```
-
-3. Open the Jupyter Notebook:
+   On Windows:
+   ```powershell
+   .venv\Scripts\Activate.ps1
+   ```
+   On macOS or Linux:
    ```bash
-   jupyter notebook
+   source .venv/bin/activate
    ```
-
-## Usage
-
-1. Navigate to the notebook file in the Jupyter interface
-2. Run the cells sequentially to initialize the chatbot
-3. Interact with the chatbot by entering your questions about health insurance
-4. The chatbot will process your input and provide relevant responses
-
-### Example Interactions
-
-- "What insurance plans do you offer?"
-- "How much will my premium be?"
-- "What is covered under basic health insurance?"
-- "How do I file a claim?"
-
-## Data & Knowledge Base
-
-The chatbot is trained on:
-- Insurance policy documents and terms
-- Frequently asked questions (FAQs)
-- Common insurance scenarios and use cases
-- Claims processing workflows
-
-## Model & Methodology
-
-The implementation includes:
-- **NLP Pipeline**: Tokenization, lemmatization, and entity recognition
-- **Intent Classification**: Understanding user intent from queries
-- **Response Generation**: Generating contextually relevant responses
-- **Dialogue Management**: Maintaining conversation context and flow
-
-## Performance
-
-The chatbot is optimized for:
-- Quick response times
-- High accuracy in insurance-related queries
-- User-friendly explanations of complex insurance concepts
-
-## Future Enhancements
-
-- [ ] Integration with insurance provider APIs
-- [ ] Multi-language support
-- [ ] Voice-based interaction capability
-- [ ] Mobile application deployment
-- [ ] Advanced NLP models (transformers, GPT-based)
-- [ ] Real-time claim tracking
-- [ ] Personalized insurance recommendations
-
-## Contributing
-
-Contributions are welcome! Please feel free to:
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/improvement`)
-3. Make your changes and commit them (`git commit -m 'Add improvement'`)
-4. Push to the branch (`git push origin feature/improvement`)
-5. Open a pull request
-
-## License
-
-This project is open source and available under the [MIT License](LICENSE).
-
-## Contact
-
-For questions or suggestions, feel free to reach out:
-- **GitHub**: [@MadhuRengan](https://github.com/MadhuRengan)
-
-## Disclaimer
-
-This chatbot is for informational purposes only. For official insurance advice, legal interpretations, or specific policy details, please consult with a licensed insurance agent or your insurance provider directly.
-
----
-
-**Last Updated**: August 2026
+3. Install the libraries used by the notebook:
+   ```bash
+   pip install jupyter streamlit faiss-cpu sentence-transformers \
+     langchain langchain-core langchain-community langchain-classic \
+     langchain-google-genai langchain-text-splitters pyngrok
+   ```
+4. Start Jupyter and open the notebook:
+   ```bash
+   jupyter notebook Insurance_chatbot.ipynb
+   ```
+Some cells use Colab-specific commands and paths. Replace `google.colab.userdata` with an environment variable and update `/content/...` paths when running locally.
+For example:
+```python
+import os
+GOOGLE_API_KEY = os.environ["GOOGLE_API_KEY"]
