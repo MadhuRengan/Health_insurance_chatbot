@@ -1,86 +1,235 @@
 # Health Insurance RAG Chatbot
-A retrieval-augmented generation (RAG) chatbot that answers health-insurance questions about coverage, exclusions, claims, premiums, and optional riders. The project is implemented in a Google Colab/Jupyter notebook and includes a Streamlit chat interface.
-## How it works
-1. Health-insurance knowledge-base entries are converted to text.
-2. `all-MiniLM-L6-v2` creates an embedding for each text chunk.
-3. FAISS stores the embeddings and retrieves entries related to the user's question.
-4. LangChain passes the retrieved context and the question to Google Gemini.
-5. A Streamlit interface displays the generated answer.
-The chatbot prompt instructs the model to answer only from the supplied knowledge base and to avoid inventing policy details.
+ 
+A Streamlit retrieval-augmented generation (RAG) application that answers health-insurance questions from a local knowledge base. It uses Hugging Face embeddings and FAISS for retrieval, then sends the retrieved context to Google Gemini through LangChain.
+ 
 ## Features
-- Answers questions about hospitalization coverage and policy exclusions
-- Explains cashless and reimbursement claim procedures
-- Provides information about premiums, renewal, portability, and no-claim bonuses
-- Covers optional benefits such as maternity and critical-illness riders
-- Uses semantic search through Hugging Face embeddings and FAISS
-- Includes a simple Streamlit web interface
-- Provides a fallback response when the knowledge base does not contain an answer
-## Technology stack
-- Python
-- Google Colab / Jupyter Notebook
-- Google Gemini through `langchain-google-genai`
-- LangChain
-- Hugging Face `all-MiniLM-L6-v2` embeddings
-- FAISS
-- Streamlit
-- ngrok or LocalTunnel for exposing the Colab app
+ 
+- Answers questions about coverage, exclusions, claims, premiums, and riders
+- Retrieves relevant policy information with `all-MiniLM-L6-v2` embeddings and FAISS
+- Instructs Gemini to answer only from the supplied knowledge base
+- Provides a browser-based Streamlit interface
+- Supports local Python execution and Docker deployment
+- Includes a health-check endpoint suitable for Docker and an AWS Application Load Balancer
+ 
+## Architecture
+ 
+```text
+User question
+    |
+    v
+Streamlit UI
+    |
+    v
+Hugging Face embedding -> FAISS similarity search
+    |                         |
+    +------ retrieved context-+
+                |
+                v
+          Google Gemini
+                |
+                v
+        Grounded response
+```
+ 
 ## Repository structure
+ 
 ```text
 Health_insurance_chatbot/
-├── Insurance_chatbot.ipynb  # RAG pipeline, sample query, and Streamlit app
-└── README.md                 # Project documentation
+|-- app.py                    # Streamlit application and RAG pipeline
+|-- data/
+|   `-- knowledge_base.json   # Health-insurance knowledge base
+|-- Dockerfile                # Production-oriented container definition
+|-- requirements.txt          # Pinned Python dependencies
+|-- .dockerignore             # Files excluded from the Docker build context
+|-- .env.example              # Safe configuration template
+`-- README.md                 # Project documentation
 ```
-> The notebook initially loads `/content/knowledge_base (1).json`, but that file is not currently included in the repository. A later notebook cell contains an embedded sample knowledge base for the generated Streamlit app.
+ 
 ## Prerequisites
-- A Google account with access to Google Colab, or Python 3.10+ with Jupyter installed
+ 
+- Python 3.10 or later; Python 3.12 is used by the Docker image
 - A Google Gemini API key
-- Internet access on the first run to download the embedding model
-- An ngrok account only if you choose the ngrok option
-## Run in Google Colab
-1. Open `Insurance_chatbot.ipynb` in Google Colab.
-2. Add your Gemini API key to **Colab secrets** using the name `api`.
-3. If you want to run the first RAG workflow, upload the missing knowledge-base file as:
-   ```text
-   /content/knowledge_base (1).json
-   ```
-4. Run the notebook cells in order.
-5. To launch the Streamlit interface, run the cell that creates `app.py`, followed by either the ngrok or LocalTunnel launch cell.
-The notebook includes this secure pattern for loading the Gemini key:
+- Docker, if you want to run the container
+- Internet access on the first run to download `all-MiniLM-L6-v2`
+ 
+## Required configuration change
+ 
+The current `app.py` in the repository contains a placeholder API key. Replace the hardcoded configuration with environment-based configuration before running or deploying it.
+ 
+Add these imports near the top of `app.py`:
+ 
 ```python
-from google.colab import userdata
-GOOGLE_API_KEY = userdata.get("api")
+import os
+from dotenv import load_dotenv
+ 
+load_dotenv()
 ```
-## Run locally
-The repository currently stores the application inside the notebook rather than as a standalone `app.py`. To run it locally:
-1. Clone the repository:
+ 
+Replace the hardcoded API-key and model block with:
+ 
+```python
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+GOOGLE_MODEL = os.environ.get("GOOGLE_MODEL", "gemini-3.5-flash")
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+ 
+if not GOOGLE_API_KEY:
+    raise RuntimeError("GOOGLE_API_KEY is not configured")
+ 
+embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
+ 
+llm = ChatGoogleGenerativeAI(
+    model=GOOGLE_MODEL,
+    temperature=0.5,
+    google_api_key=GOOGLE_API_KEY,
+)
+```
+ 
+Remove the earlier duplicate `embeddings = HuggingFaceEmbeddings(...)` assignment so the vector store is constructed with the environment-configured embedding model.
+ 
+## Run locally with Python
+ 
+1. Clone the repository and enter it:
+ 
    ```bash
    git clone https://github.com/MadhuRengan/Health_insurance_chatbot.git
    cd Health_insurance_chatbot
    ```
-2. Create and activate a virtual environment:
+ 
+2. Create a virtual environment:
+ 
    ```bash
    python -m venv .venv
    ```
-   On Windows:
+ 
+3. Activate it.
+ 
+   Windows PowerShell:
+ 
    ```powershell
    .venv\Scripts\Activate.ps1
    ```
-   On macOS or Linux:
+ 
+   macOS or Linux:
+ 
    ```bash
    source .venv/bin/activate
    ```
-3. Install the libraries used by the notebook:
+ 
+4. Install the pinned dependencies:
+ 
    ```bash
-   pip install jupyter streamlit faiss-cpu sentence-transformers \
-     langchain langchain-core langchain-community langchain-classic \
-     langchain-google-genai langchain-text-splitters pyngrok
+   python -m pip install --upgrade pip
+   python -m pip install -r requirements.txt
    ```
-4. Start Jupyter and open the notebook:
+ 
+5. Create local configuration:
+ 
+   Windows PowerShell:
+ 
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+ 
+   macOS or Linux:
+ 
    ```bash
-   jupyter notebook Insurance_chatbot.ipynb
+   cp .env.example .env
    ```
-Some cells use Colab-specific commands and paths. Replace `google.colab.userdata` with an environment variable and update `/content/...` paths when running locally.
-For example:
-```python
-import os
-GOOGLE_API_KEY = os.environ["GOOGLE_API_KEY"]
+ 
+6. Put the real Gemini API key in `.env`, then start the app:
+ 
+   ```bash
+   streamlit run app.py
+   ```
+ 
+7. Open `http://localhost:8501`.
+ 
+## Run with Docker
+ 
+1. Create `.env` from `.env.example` and supply the real Gemini key.
+ 
+2. Build the image:
+ 
+   ```bash
+   docker build -t health-insurance-chatbot:local .
+   ```
+ 
+3. Run it:
+ 
+   ```bash
+   docker run --rm \
+     --name health-insurance-chatbot \
+     --env-file .env \
+     -p 8501:8501 \
+     health-insurance-chatbot:local
+   ```
+ 
+   PowerShell equivalent:
+ 
+   ```powershell
+   docker run --rm --name health-insurance-chatbot --env-file .env -p 8501:8501 health-insurance-chatbot:local
+   ```
+ 
+4. Open `http://localhost:8501`.
+ 
+Check container health with:
+ 
+```bash
+docker inspect --format='{{json .State.Health}}' health-insurance-chatbot
+```
+ 
+## Deploy on Amazon EC2
+ 
+A practical production flow is:
+ 
+```text
+GitHub -> Docker build -> Amazon ECR -> EC2 Docker host -> ALB/HTTPS
+```
+ 
+1. Rotate any API or tunnel credentials that were previously committed to the public repository.
+2. Build and test the image locally.
+3. Push the image to a private Amazon ECR repository.
+4. Launch an Amazon Linux 2023 EC2 instance with an IAM instance role.
+5. Grant the role only the ECR pull and secret-read permissions it needs.
+6. Install Docker and pull the image from ECR.
+7. Store the Gemini key in AWS Secrets Manager; do not bake it into the image or EC2 user data.
+8. Run the container with a restart policy:
+ 
+   ```bash
+   docker run -d \
+     --name health-insurance-chatbot \
+     --restart unless-stopped \
+     -p 8501:8501 \
+     --env-file /opt/health-insurance-chatbot/app.env \
+     ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/health-insurance-chatbot:VERSION
+   ```
+ 
+9. Put an Application Load Balancer in front of EC2, terminate HTTPS with an ACM certificate, and configure its target-group health check as `/_stcore/health`.
+10. Allow EC2 port `8501` only from the load balancer security group. Prefer AWS Systems Manager Session Manager instead of exposing SSH port `22`.
+ 
+For stronger secret handling, change the application to retrieve the Gemini key directly from AWS Secrets Manager using the EC2 instance role rather than storing it in an environment file.
+ 
+## Example questions
+ 
+- What does hospitalization coverage include?
+- What is the waiting period for a pre-existing disease?
+- How do I submit a cashless claim?
+- Which documents are needed for reimbursement?
+- How is the premium calculated?
+- Is maternity coverage available?
+ 
+## Known limitations
+ 
+- The knowledge base contains example information rather than the complete wording of a live policy.
+- The app rebuilds its embeddings and FAISS index when the Streamlit process starts.
+- `langchain-community` and the `RetrievalQA` implementation used by this project are legacy dependencies and should be migrated in a future refactor.
+- The project has no automated retrieval-quality or grounded-answer tests.
+- It does not authenticate users, calculate personalized premiums, or access live claim data.
+ 
+## Disclaimer
+ 
+This project is an educational demonstration. It does not provide medical, legal, financial, or insurance advice. Always verify information against the official policy wording and consult the insurer or a licensed insurance professional.
+ 
+## Author
+ 
+[MadhuRengan](https://github.com/MadhuRengan)
