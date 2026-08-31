@@ -51,41 +51,8 @@ Health_insurance_chatbot/
 - A Google Gemini API key
 - Docker, if you want to run the container
 - Internet access on the first run to download `all-MiniLM-L6-v2`
- 
-## Required configuration change
- 
-The current `app.py` in the repository contains a placeholder API key. Replace the hardcoded configuration with environment-based configuration before running or deploying it.
- 
-Add these imports near the top of `app.py`:
- 
-```python
-import os
-from dotenv import load_dotenv
- 
-load_dotenv()
-```
- 
-Replace the hardcoded API-key and model block with:
- 
-```python
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
-GOOGLE_MODEL = os.environ.get("GOOGLE_MODEL", "gemini-3.5-flash")
-EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
- 
-if not GOOGLE_API_KEY:
-    raise RuntimeError("GOOGLE_API_KEY is not configured")
- 
-embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
- 
-llm = ChatGoogleGenerativeAI(
-    model=GOOGLE_MODEL,
-    temperature=0.5,
-    google_api_key=GOOGLE_API_KEY,
-)
-```
- 
-Remove the earlier duplicate `embeddings = HuggingFaceEmbeddings(...)` assignment so the vector store is constructed with the environment-configured embedding model.
- 
+
+  
 ## Run locally with Python
  
 1. Clone the repository and enter it:
